@@ -18,6 +18,7 @@ module Distribution.Simple.Program.Types (
     -- * Program and functions for constructing them
     Program(..),
     simpleProgram,
+    crossCompilableProgram,
 
     -- * Configured program and related functions
     ConfiguredProgram(..),
@@ -28,7 +29,7 @@ module Distribution.Simple.Program.Types (
   ) where
 
 import Distribution.Simple.Utils
-         ( findProgramLocation )
+         ( findProgramLocation, findCrossCompilableProgramLocation )
 import Distribution.Version
          ( Version )
 import Distribution.Verbosity
@@ -114,6 +115,13 @@ simpleProgram name = Program {
     programFindLocation = \v   -> findProgramLocation v name,
     programFindVersion  = \_ _ -> return Nothing,
     programPostConf     = \_ _ -> return []
+  }
+
+-- | A program which gets prefixed by the CROSS_COMPILE environment variable
+-- if it has been set.
+crossCompilableProgram :: String -> Program
+crossCompilableProgram name = (simpleProgram name) {
+    programFindLocation = \v   -> findCrossCompilableProgramLocation v name
   }
 
 -- | Make a simple 'ConfiguredProgram'.

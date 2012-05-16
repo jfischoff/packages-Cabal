@@ -65,7 +65,9 @@ module Distribution.Simple.Utils (
         maybeExit,
         xargs,
         findProgramLocation,
+        findCrossCompilableProgramLocation,
         findProgramVersion,
+        findCrossCompilableProgramVersion,
 
         -- * copying files
         smartCopySources,
@@ -152,7 +154,7 @@ import System.Directory
     ( getDirectoryContents, doesDirectoryExist, doesFileExist, removeFile
     , findExecutable )
 import System.Environment
-    ( getProgName )
+    ( getProgName, getEnv )
 import System.Cmd
     ( rawSystem )
 import System.Exit
@@ -204,6 +206,7 @@ import Distribution.Compat.TempFile
 import Distribution.Compat.Exception
          ( IOException, throwIOIO, tryIO, catchIO, catchExit, onException )
 import Distribution.Verbosity
+import Data.Maybe ( fromMaybe )
 
 #ifdef VERSION_base
 import qualified Paths_Cabal (version)
@@ -508,6 +511,14 @@ findProgramLocation verbosity prog = do
       Just path -> debug verbosity ("found " ++ prog ++ " at "++ path)
   return res
 
+findCrossCompilableProgramLocation :: Verbosity -> FilePath -> IO (Maybe FilePath)
+findCrossCompilableProgramLocation v prog = do
+    crossCompile <- getEnv "CROSS_COMPILE"
+    findProgramLocation v (crossCompile++prog)
+  `catch`
+    \exc -> if isDoesNotExistError exc
+       then findProgramLocation v prog
+       else Exception.throwIO exc
 
 -- | Look for a program and try to find it's version number. It can accept
 -- either an absolute path or the name of a program binary, in which case we
@@ -531,6 +542,15 @@ findProgramVersion versionArg selectVersion verbosity path = do
       Just v  -> debug verbosity $ path ++ " is version " ++ display v
   return version
 
+findCrossCompilableProgramVersion :: String             -- ^ version args
+                   -> (String -> String) -- ^ function to select version
+                                         --   number from program output
+                   -> Verbosity
+                   -> FilePath           -- ^ location
+                   -> IO (Maybe Version)
+findCrossCompilableProgramVersion versionArg selectVersion verbosity path = do
+  path' <- fromMaybe path `fmap` findCrossCompilableProgramLocation verbosity path
+  findProgramVersion versionArg selectVersion verbosity path'
 
 -- | Like the unix xargs program. Useful for when we've got very long command
 -- lines that might overflow an OS limit on command line length and so you

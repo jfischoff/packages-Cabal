@@ -56,6 +56,7 @@ module Distribution.Simple.PreProcess (preprocessComponent, knownSuffixHandlers,
     where
 
 
+import Control.Exception ( throwIO, catch)
 import Control.Monad
 import Distribution.Simple.PreProcess.Unlit (unlit)
 import Distribution.Package
@@ -97,9 +98,12 @@ import Distribution.Verbosity
 import Data.Maybe (fromMaybe)
 import Data.List (nub)
 import System.Directory (getModificationTime, doesFileExist)
+import System.Environment (getEnv)
 import System.Info (os, arch)
+import System.IO.Error (isDoesNotExistError)
 import System.FilePath (splitExtension, dropExtensions, (</>), (<.>),
                         takeDirectory, normalise, replaceExtension)
+import Prelude hiding (catch)
 
 -- |The interface to a preprocessor, which may be implemented using an
 -- external program, but need not be.  The arguments are the name of
@@ -420,8 +424,22 @@ ppHsc2hs bi lbi =
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
       (gccProg, _) <- requireProgram verbosity gccProgram (withPrograms lbi)
+      crossCompileOptions <- do
+          crossCompile <- getEnv "CROSS_COMPILE"
+            `catch` \exc -> if isDoesNotExistError exc
+                                then return ""
+                                else throwIO exc
+          mAlien <- Just `fmap` getEnv "ALIEN_SCRIPT"
+            `catch` \exc -> if isDoesNotExistError exc
+                                then return Nothing
+                                else throwIO exc
+          return $ case (mAlien, crossCompile) of
+              (_, "")         -> []
+              (Just alien, _) -> [ "--alien", alien]
+              (Nothing, _)    -> [ "--cross-compile" ] 
       rawSystemProgramConf verbosity hsc2hsProgram (withPrograms lbi) $
-          [ "--cc=" ++ programPath gccProg
+          crossCompileOptions
+       ++ [ "--cc=" ++ programPath gccProg
           , "--ld=" ++ programPath gccProg ]
 
           -- Additional gcc options

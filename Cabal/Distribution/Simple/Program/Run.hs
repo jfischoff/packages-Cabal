@@ -94,7 +94,8 @@ runProgramInvocation verbosity
     progInvokeEnv   = [],
     progInvokeCwd   = Nothing,
     progInvokeInput = Nothing
-  } =
+  } = do
+  putStrLn "rawSystemExit"  -- ###
   rawSystemExit verbosity path args
 
 runProgramInvocation verbosity
@@ -106,6 +107,7 @@ runProgramInvocation verbosity
     progInvokeInput = Just inputStr,
     progInvokeInputEncoding = encoding
   } = do
+    putStrLn $ "run "++path++" "++show args  -- ###
     (_, errors, exitCode) <- rawSystemStdInOut verbosity
                                     path args
                                     (Just input) False
@@ -130,6 +132,7 @@ getProgramInvocationOutput verbosity
     progInvokeInput = Nothing,
     progInvokeOutputEncoding = encoding
   } = do
+  putStrLn $ "runOutput "++path++" "++show args  -- ###
   let utf8 = case encoding of IOEncodingUTF8 -> True; _ -> False
       decode | utf8      = fromUTF8 . normaliseLineEndings
              | otherwise = id

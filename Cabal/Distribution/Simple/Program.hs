@@ -159,7 +159,7 @@ runDbProgram :: Verbosity  -- ^verbosity
              -> ProgramDb  -- ^look up the program here
              -> [ProgArg]  -- ^Any /extra/ arguments to add
              -> IO ()
-runDbProgram verbosity prog programDb args =
+runDbProgram verbosity prog programDb args = do
   case lookupProgram prog programDb of
     Nothing             -> die notFound
     Just configuredProg -> runProgram verbosity configuredProg args
@@ -174,7 +174,7 @@ getDbProgramOutput :: Verbosity  -- ^verbosity
                    -> ProgramDb  -- ^look up the program here
                    -> [ProgArg]  -- ^Any /extra/ arguments to add
                    -> IO String
-getDbProgramOutput verbosity prog programDb args =
+getDbProgramOutput verbosity prog programDb args = do
   case lookupProgram prog programDb of
     Nothing             -> die notFound
     Just configuredProg -> getProgramOutput verbosity configuredProg args

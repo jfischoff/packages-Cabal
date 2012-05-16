@@ -131,7 +131,7 @@ import Distribution.Text
          ( display )
 
 -- Base
-import System.Environment(getArgs, getProgName, getEnvironment)
+import System.Environment(getArgs, getProgName, getEnvironment, getEnv)
 import System.Directory(removeFile, doesFileExist,
                         doesDirectoryExist, removeDirectoryRecursive)
 import System.Exit
@@ -140,6 +140,9 @@ import Distribution.Compat.Exception (catchIO, throwIOIO)
 
 import Control.Monad   (when)
 import Data.List       (intersperse, unionBy, nub, (\\))
+import Control.Exception (catch, throwIO)
+import Data.Maybe (maybeToList)
+import Prelude hiding (catch)
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
@@ -628,8 +631,18 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
   let env' = appendToEnvironment ("CFLAGS",  unwords ccFlags)
              env
       args' = args ++ ["--with-gcc=" ++ ccProg]
+  crossCompileArgs <- do
+      -- Remove trailing '-' 
+      alias <- removeTrailingMinus `fmap` getEnv "CROSS_COMPILE"
+      return $ if null alias
+          then []
+          else ["--host="++alias]
+    `catch` \exc -> if isDoesNotExistError exc
+                        then return []
+                        else throwIO exc
+  let args'' = args' ++ crossCompileArgs
   handleNoWindowsSH $
-    rawSystemExitWithEnv verbosity "sh" args' env'
+    rawSystemExitWithEnv verbosity "sh" args'' env'
 
   where
     args = "configure" : configureArgs backwardsCompatHack flags
@@ -651,6 +664,10 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
 
     notFoundMsg = "The package has a './configure' script. This requires a "
                ++ "Unix compatibility toolchain such as MinGW+MSYS or Cygwin."
+
+    removeTrailingMinus cc = reverse $ case reverse cc of
+                                 '-':xs -> xs
+                                 xs     -> xs
 
 getHookedBuildInfo :: Verbosity -> IO HookedBuildInfo
 getHookedBuildInfo verbosity = do

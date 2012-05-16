@@ -145,6 +145,9 @@ import qualified System.Info
     ( compilerName, compilerVersion )
 import System.IO
     ( hPutStrLn, stderr, hClose )
+import Control.Exception (catch, throwIO)
+import System.Environment(getEnv)
+import System.IO.Error (isDoesNotExistError)
 import Distribution.Text
     ( Text(disp), display, simpleParse )
 import Text.PrettyPrint
@@ -871,12 +874,19 @@ configCompiler (Just hcFlavor) hcPath hcPkg conf verbosity = do
 -- TODO: produce a log file from the compiler errors, if any.
 checkForeignDeps :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
 checkForeignDeps pkg lbi verbosity = do
-  ifBuildsWith allHeaders (commonCcArgs ++ makeLdArgs allLibs) -- I'm feeling lucky
+  envCFlags   <- words `fmap` fromEnv "CFLAGS"
+  envCPPFlags <- words `fmap` fromEnv "CPPFLAGS"
+  envLDFlags  <- words `fmap` fromEnv "LDFLAGS"
+  ifBuildsWith allHeaders (envCFlags ++ envCPPFlags ++ envLDFlags ++
+                           commonCcArgs ++ makeLdArgs allLibs) -- I'm feeling lucky
            (return ())
            (do missingLibs <- findMissingLibs
                missingHdr  <- findOffendingHdr
                explainErrors missingHdr missingLibs)
       where
+        fromEnv name = getEnv name `catch` \exc -> if isDoesNotExistError exc
+                                                       then return ""
+                                                       else throwIO exc
         allHeaders = collectField PD.includes
         allLibs    = collectField PD.extraLibs
 
@@ -950,6 +960,7 @@ checkForeignDeps pkg lbi verbosity = do
                 hPutStrLn cHnd program
                 hClose cHnd
                 hClose oHnd
+                putStrLn $ "program: "++program  -- ###
                 _ <- rawSystemProgramStdoutConf verbosity
                   gccProgram (withPrograms lbi) (cName:"-o":oNname:args)
                 return True

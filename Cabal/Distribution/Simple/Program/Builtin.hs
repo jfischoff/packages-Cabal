@@ -46,9 +46,9 @@ module Distribution.Simple.Program.Builtin (
   ) where
 
 import Distribution.Simple.Program.Types
-         ( Program(..), simpleProgram )
+         ( Program(..), simpleProgram, crossCompilableProgram )
 import Distribution.Simple.Utils
-         ( findProgramLocation, findProgramVersion )
+         ( findProgramLocation, findProgramVersion, findCrossCompilableProgramVersion )
 
 -- ------------------------------------------------------------
 -- * Known programs
@@ -92,13 +92,13 @@ builtinPrograms =
     ]
 
 ghcProgram :: Program
-ghcProgram = (simpleProgram "ghc") {
-    programFindVersion = findProgramVersion "--numeric-version" id
+ghcProgram = (crossCompilableProgram "ghc") {
+    programFindVersion = findCrossCompilableProgramVersion "--numeric-version" id
   }
 
 ghcPkgProgram :: Program
-ghcPkgProgram = (simpleProgram "ghc-pkg") {
-    programFindVersion = findProgramVersion "--version" $ \str ->
+ghcPkgProgram = (crossCompilableProgram "ghc-pkg") {
+    programFindVersion = findCrossCompilableProgramVersion "--version" $ \str ->
       -- Invoking "ghc-pkg --version" gives a string like
       -- "GHC package manager version 6.4.1"
       case words str of
@@ -194,18 +194,18 @@ alexProgram = (simpleProgram "alex") {
   }
 
 gccProgram :: Program
-gccProgram = (simpleProgram "gcc") {
-    programFindVersion = findProgramVersion "-dumpversion" id
+gccProgram = (crossCompilableProgram "gcc") {
+    programFindVersion = findCrossCompilableProgramVersion "-dumpversion" id
   }
 
 ranlibProgram :: Program
-ranlibProgram = simpleProgram "ranlib"
+ranlibProgram = crossCompilableProgram "ranlib"
 
 arProgram :: Program
-arProgram = simpleProgram "ar"
+arProgram = crossCompilableProgram "ar"
 
 stripProgram :: Program
-stripProgram = simpleProgram "strip"
+stripProgram = crossCompilableProgram "strip"
 
 hsc2hsProgram :: Program
 hsc2hsProgram = (simpleProgram "hsc2hs") {
@@ -255,13 +255,13 @@ greencardProgram :: Program
 greencardProgram = simpleProgram "greencard"
 
 ldProgram :: Program
-ldProgram = simpleProgram "ld"
+ldProgram = crossCompilableProgram "ld"
 
 tarProgram :: Program
 tarProgram = simpleProgram "tar"
 
 cppProgram :: Program
-cppProgram = simpleProgram "cpp"
+cppProgram = crossCompilableProgram "cpp"
 
 pkgConfigProgram :: Program
 pkgConfigProgram = (simpleProgram "pkg-config") {

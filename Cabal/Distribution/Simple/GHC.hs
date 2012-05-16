@@ -131,7 +131,7 @@ import System.Directory
          ( removeFile, getDirectoryContents, doesFileExist
          , getTemporaryDirectory )
 import System.FilePath          ( (</>), (<.>), takeExtension,
-                                  takeDirectory, replaceExtension, splitExtension )
+                                  takeDirectory, takeFileName, replaceExtension, splitExtension )
 import System.IO (hClose, hPutStrLn)
 import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchExit, catchIO)
@@ -202,10 +202,12 @@ guessToolFromGhcPath :: FilePath -> ConfiguredProgram -> Verbosity
 guessToolFromGhcPath tool ghcProg verbosity
   = do let path              = programPath ghcProg
            dir               = takeDirectory path
+           fn                = takeFileName path
+           crossCompilePrefix = reverse . fromMaybe "" . stripPrefix "chg" . reverse $ fn
            versionSuffix     = takeVersionSuffix (dropExeExtension path)
-           guessNormal       = dir </> tool <.> exeExtension
-           guessGhcVersioned = dir </> (tool ++ "-ghc" ++ versionSuffix) <.> exeExtension
-           guessVersioned    = dir </> (tool ++ versionSuffix) <.> exeExtension
+           guessNormal       = dir </> (crossCompilePrefix ++ tool) <.> exeExtension
+           guessGhcVersioned = dir </> (crossCompilePrefix ++ tool ++ "-ghc" ++ versionSuffix) <.> exeExtension
+           guessVersioned    = dir </> (crossCompilePrefix ++ tool ++ versionSuffix) <.> exeExtension
            guesses | null versionSuffix = [guessNormal]
                    | otherwise          = [guessGhcVersioned,
                                            guessVersioned,
@@ -235,7 +237,7 @@ guessToolFromGhcPath tool ghcProg verbosity
 -- > /usr/local/bin/ghc-pkg(.exe)
 --
 guessGhcPkgFromGhcPath :: ConfiguredProgram -> Verbosity -> IO (Maybe FilePath)
-guessGhcPkgFromGhcPath = guessToolFromGhcPath "ghc-pkg"
+guessGhcPkgFromGhcPath cp v = guessToolFromGhcPath "ghc-pkg" cp v
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find a
 -- corresponding hsc2hs, we try looking for both a versioned and unversioned
